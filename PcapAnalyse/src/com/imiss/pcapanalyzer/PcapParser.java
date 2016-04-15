@@ -1,9 +1,11 @@
 package com.imiss.pcapanalyzer;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +42,8 @@ public class PcapParser {
 	private byte[] data_header = new byte[16];
 	private byte[] content;
 
+	private String fileout = "out.txt";
+	BufferedWriter br = null;
 	private List<String[]> datas = new ArrayList<String[]>();
 	private List<String> filenames = new ArrayList<String>();
 	
@@ -49,6 +53,13 @@ public class PcapParser {
 	public PcapParser(File pcap, String dst) {
 		this.pcap = pcap;
 		this.savePath = dst;
+		try {
+			br = new BufferedWriter(new FileWriter(new File(fileout)));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public boolean parse() {
@@ -74,7 +85,7 @@ public class PcapParser {
 					protocolData = new ProtocolData();
 					boolean isDone = parseContent();
 					if(isDone)
-						break;
+						continue;
 					createFiles(protocolData);
 				}
 			}
@@ -520,8 +531,7 @@ public class PcapParser {
 		}  else if (protocolData.getProtocolType() == ProtocolType.OTHER) {
 			return;
 		}
-		if(!protocolData.getDesPort().equals("80")){
-			
+		if(!protocolData.getDesPort().equals("80")){			
 			return;
 		}
 		String filename = protocol + "[" + protocolData.getSrcIP() + "]"
@@ -566,6 +576,8 @@ public class PcapParser {
 			File file = new File(pathname);
 			FileOutputStream fos = new FileOutputStream(file,append);
 			
+			
+			
 			File data_file = new File(pathname_data);
 			FileOutputStream fos_data = new FileOutputStream(data_file,append);
 			
@@ -582,10 +594,15 @@ public class PcapParser {
 			fos_data.write(data_content);
 			String http_conten = new String(data_content);
 			
-			if(http_conten.indexOf("User-Agent")>-1){
-				int begin = http_conten.indexOf("User-Agent");
-				int end = http_conten.indexOf("Host");
-				System.out.println(dataFrame.getSourceMac() +"  "+ protocolData.getSrcIP() +"  "+ http_conten.substring(begin,end));
+			if(http_conten.indexOf("User-Agent") > -1){
+				String[] str = http_conten.split("\n");
+				for(int i = 0;i<str.length;i++){
+					int index = str[i].indexOf("User-Agent");
+					if(index > -1){
+						br.write(protocolData.getSrcIP() +"  "+ protocolData.getDesIP() +"  "+str[i].substring(index)+"\n");
+					}
+				}				
+				br.flush();
 			}
 			fos.close();
 			fos_data.close();
@@ -597,8 +614,9 @@ public class PcapParser {
 	}
 	
 	public static void main(String[] args) {
-		PcapParser parse = new PcapParser(new File("Í¾Å£Á÷Á¿.pcap"), "F:\\java_code\\NLP\\PcapAnalyse");
+		PcapParser parse = new PcapParser(new File("4-15.pcap"), "F:\\java_code\\NLP\\PcapAnalyse");
 		parse.parse();
+
 	}
 
 }
